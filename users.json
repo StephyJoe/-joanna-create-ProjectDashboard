@@ -1,0 +1,13 @@
+{
+    "Joanna": {
+        "password": "$2b$12$bKrK6NMQnRMyJ3Zn5ehB1e5AKtg4Ioa4OJjJe8CKdC.Ad5u2nfwv6"
+    },
+    "Laisah": {
+        "password": "a8fd7dc0e1bf71874f7bae013d89b07da30f44bdb001c6e44071388ce6fa380f",
+        "role": "Admin"
+    },
+    "Nad": {
+        "password": "a8fd7dc0e1bf71874f7bae013d89b07da30f44bdb001c6e44071388ce6fa380f",
+        "role": "Project Manager"
+    }
+}
