@@ -21,6 +21,7 @@ if 'projects' not in st.session_state:
 if 'username' not in st.session_state:
     st.session_state.username = None
 
+
 # Custom serializer for datetime objects
 
 
@@ -28,6 +29,7 @@ def custom_serializer(obj):
     if isinstance(obj, (datetime, date)):
         return obj.isoformat()
     raise TypeError(f"Type {type(obj)} not serializable")
+
 
 # Save projects to JSON
 
@@ -39,6 +41,7 @@ def save_projects():
     except Exception as e:
         st.error(f"Error saving projects: {e}")
 
+
 # Load projects from JSON
 
 
@@ -48,6 +51,7 @@ def load_projects():
             st.session_state.projects = json.load(file)
     except FileNotFoundError:
         st.session_state.projects = []
+
 
 # Login/Register System
 
@@ -84,6 +88,7 @@ def login_register():
                     st.success(f"Account created successfully for {new_username}!")
                 else:
                     st.error("Passwords do not match or fields are empty.")
+
 
 # Display Login/Register if not logged in
 
@@ -220,47 +225,149 @@ else:
 
     # Tab 4: Task Management
     with tab4:
-        st.header("✅ Task Management")
-        st.write("Assign tasks and track their progress.")
+        st.header("📅 Task Management & Scheduling")
+        st.write("Manage and schedule tasks efficiently for each project.")
+
         if st.session_state.projects:
             project_names = [proj["name"] for proj in st.session_state.projects]
-            selected_project = st.selectbox("Select a Project for Task Management", project_names,
-                                            key="task_management_select")
+            selected_project = st.selectbox("Select a Project", project_names, key="task_management_select")
             project_data = next(proj for proj in st.session_state.projects if proj["name"] == selected_project)
 
-            task_action = st.radio("What would you like to do?", ["View Tasks", "Add New Task"])
+            # Display existing tasks
+            st.subheader("Current Tasks")
+            if project_data["tasks"]:
+                for task in project_data["tasks"]:
+                    st.write(f"**Task:** {task['task_name']}")
+                    st.write(f"**Assigned To:** {task['assigned_to']}")
+                    st.write(f"**Priority:** {task['priority']}")
+                    st.write(f"**Deadline:** {task['deadline']}")
+                    st.write(f"**Status:** {task['status']}")
+                    st.write(f"**Description:** {task['description']}")
 
-            if task_action == "Add New Task":
-                task_name = st.text_input("Task Name")
-                task_due = st.date_input("Due Date")
-                task_progress = st.slider("Task Progress (%)", 0, 100)
-                if st.button("Add Task"):
-                    project_data["tasks"].append({
-                        "name": task_name,
-                        "due": task_due.isoformat(),
-                        "progress": task_progress
-                    })
+                    # Task status update
+                    status_update = st.selectbox(f"Update Status for {task['task_name']}",
+                                                 ["Pending", "In Progress", "Completed"],
+                                                 key=f"status_update_{task['task_name']}")
+                    if st.button(f"Update Status for {task['task_name']}", key=f"update_button_{task['task_name']}"):
+                        task["status"] = status_update
+                        save_projects()
+                        st.success(f"Status of {task['task_name']} updated to {status_update}.")
+
+                    # Task comments
+                    st.subheader(f"Comments on {task['task_name']}")
+                    task_comments = st.text_area(f"Add a comment for {task['task_name']}",
+                                                 key=f"comment_{task['task_name']}")
+                    if st.button(f"Save Comment for {task['task_name']}", key=f"comment_button_{task['task_name']}"):
+                        if 'comments' not in task:
+                            task['comments'] = []
+                        task['comments'].append(task_comments)
+                        save_projects()
+                        st.success(f"Comment added for {task['task_name']}.")
+
+            else:
+                st.info("No tasks available. Please add new tasks.")
+
+            # Adding a new task
+            st.subheader("Add a New Task")
+            task_name = st.text_input("Task Name")
+            assigned_to = st.text_input("Assign to")
+            priority = st.selectbox("Priority", ["High", "Medium", "Low"])
+            deadline = st.date_input("Deadline")
+            description = st.text_area("Task Description")
+
+            if st.button("Add Task"):
+                if task_name and assigned_to and description:
+                    new_task = {
+                        "task_name": task_name,
+                        "assigned_to": assigned_to,
+                        "priority": priority,
+                        "deadline": deadline,
+                        "status": "Pending",  # Default status
+                        "description": description,
+                        "comments": []  # Comments section for the task
+                    }
+                    project_data["tasks"].append(new_task)
                     save_projects()
-                    st.success(f"Task {task_name} added successfully!")
+                    st.success(f"New task '{task_name}' added successfully!")
+                else:
+                    st.error("Please fill in all the required fields.")
 
-            elif task_action == "View Tasks":
-                st.write(project_data["tasks"])
+            # Task Search & Filter
+            st.subheader("Search and Filter Tasks")
+            search_query = st.text_input("Search for a task")
+            filtered_tasks = [task for task in project_data["tasks"] if
+                              search_query.lower() in task["task_name"].lower()]
+
+            if filtered_tasks:
+                for task in filtered_tasks:
+                    st.write(f"**Task Name:** {task['task_name']}")
+                    st.write(f"Assigned to: {task['assigned_to']}")
+                    st.write(f"Priority: {task['priority']}")
+                    st.write(f"Deadline: {task['deadline']}")
+                    st.write(f"Status: {task['status']}")
+            else:
+                st.info("No tasks found matching the search query.")
+
+            # Gantt Chart Representation (Optional)
+            st.subheader("Task Timeline (Gantt Chart)")
+            # You can implement this using a package like Plotly or Altair for interactive Gantt charts
+            # Example placeholder for Gantt chart integration
+            # Gantt chart would be shown here for visualizing task timelines.
+
+            # Task Scheduling - Gantt chart integration can also be added here
+            st.write("Gantt Chart could be integrated here to visualize tasks' timelines.")
 
     # Tab 5: Documents
     with tab5:
         st.header("📄 Document Management")
         st.write("Upload and manage project documents.")
+
         if st.session_state.projects:
             project_names = [proj["name"] for proj in st.session_state.projects]
             selected_project = st.selectbox("Select a Project for Documents", project_names,
                                             key="document_management_select")
             project_data = next(proj for proj in st.session_state.projects if proj["name"] == selected_project)
 
-            document = st.file_uploader("Upload Document", type=["pdf", "docx", "png", "jpg", "jpeg"])
-            if document:
-                project_data["documents"].append(document)
+            # Show uploaded documents
+            st.subheader("Uploaded Documents")
+            if project_data["documents"]:
+                for idx, doc in enumerate(project_data["documents"]):
+                    st.write(f"**Document {idx + 1}:**")
+                    st.text(f"Filename: {doc.name}")
+                    st.text(f"Type: {doc.type}")
+                    st.download_button(label="Download", data=doc, file_name=doc.name)
+                    if st.button(f"Delete Document {idx + 1}", key=f"delete_doc_{idx}"):
+                        project_data["documents"].remove(doc)
+                        save_projects()
+                        st.success(f"Document {doc.name} deleted successfully!")
+            else:
+                st.info("No documents uploaded yet. Please upload a new document.")
+
+            # Upload multiple documents
+            uploaded_files = st.file_uploader("Upload Documents", type=["pdf", "docx", "png", "jpg", "jpeg"],
+                                              accept_multiple_files=True)
+            if uploaded_files:
+                for uploaded_file in uploaded_files:  # Renaming 'file' to 'uploaded_file'
+                    project_data["documents"].append(uploaded_file)
                 save_projects()
-                st.success(f"Document uploaded successfully!")
+                st.success("Documents uploaded successfully!")
+
+            # Document categorization (example: project-specific tags)
+            categories = ["Contracts", "Plans", "Invoices", "Reports"]
+            doc_category = st.selectbox("Select Document Category", categories)
+            st.text(f"Selected category: {doc_category}")
+
+            # Option to add metadata for documents
+            st.subheader("Add Document Metadata")
+            doc_title = st.text_input("Document Title")
+            doc_description = st.text_area("Document Description")
+            if st.button("Save Metadata"):
+                if doc_title and doc_description:
+                    metadata = {"Title": doc_title, "Description": doc_description}
+                    st.session_state.document_metadata = metadata
+                    st.success("Metadata saved!")
+                else:
+                    st.error("Please fill in both the title and description fields.")
 
     # Tab 6: Interim Claims
     with tab6:
