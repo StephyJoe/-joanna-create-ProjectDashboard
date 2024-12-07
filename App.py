@@ -100,114 +100,65 @@ else:
     tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["📂 Project Overview", "📊 Progress Tracking", "💰 Financials",
                                                   "✅ Task Management", "📄 Documents", "💼 Interim Claims"])
 
-    # Tab 1: Project Overview with enhanced features
-with tab1:
-    st.header("📂 Project Overview")
-    st.markdown("### View and manage all your projects here.")
-    
-    project_action = st.radio("Choose an action", ["Register New Project", "View Existing Projects"])
-    
-    if project_action == "Register New Project":
-        with st.form(key="project_form"):
-            col1, col2 = st.columns(2)
-            with col1:
-                project_name = st.text_input("Project Name")
-                project_id = st.text_input("Project ID")
-                client_name = st.text_input("Client Name")
-            with col2:
-                start_date = st.date_input("Start Date")
-                end_date = st.date_input("End Date", min_value=start_date)
-                budget = st.number_input("Budget ($)", min_value=0, value=100000)
+    # Tab 1: Project Overview
+    with tab1:
+        st.header("📂 Project Overview")
+        st.markdown("View and manage all your projects here.")
+        project_action = st.radio("Choose an action", ["Register New Project", "View Existing Projects"])
 
-            submit = st.form_submit_button("Register Project")
-            if submit:
-                if not project_name or not project_id or not client_name:
-                    st.error("All fields are required!")
-                else:
-                    new_project = {
-                        "name": project_name,
-                        "id": project_id,
-                        "client": client_name,
-                        "start_date": start_date.isoformat(),
-                        "end_date": end_date.isoformat(),
-                        "budget": budget,
-                        "progress": 0,
-                        "tasks": [],
-                        "documents": [],
-                        "interim_claims": []
-                    }
-                    st.session_state.projects.append(new_project)
+        if project_action == "Register New Project":
+            with st.form(key="project_form"):
+                col1, col2 = st.columns(2)
+                with col1:
+                    project_name = st.text_input("Project Name")
+                    project_id = st.text_input("Project ID")
+                    client_name = st.text_input("Client Name")
+                with col2:
+                    start_date = st.date_input("Start Date")
+                    end_date = st.date_input("End Date", min_value=start_date)
+                    budget = st.number_input("Budget ($)", min_value=0, value=100000)
+
+                submit = st.form_submit_button("Register Project")
+                if submit:
+                    if not project_name or not project_id or not client_name:
+                        st.error("All fields are required!")
+                    else:
+                        new_project = {
+                            "name": project_name,
+                            "id": project_id,
+                            "client": client_name,
+                            "start_date": start_date.isoformat(),
+                            "end_date": end_date.isoformat(),
+                            "budget": budget,
+                            "progress": 0,
+                            "tasks": [],
+                            "documents": [],
+                            "interim_claims": []  # Ensure interim_claims is initialized as an empty list
+                        }
+
+                        st.session_state.projects.append(new_project)
+                        save_projects()
+                        st.success(f"Project {project_name} registered successfully!")
+
+        elif project_action == "View Existing Projects":
+            load_projects()
+
+            if st.session_state.projects:
+                project_names = [proj["name"] for proj in st.session_state.projects]
+                selected_project = st.selectbox("Select a Project to Track", project_names,
+                                                key="existing_project_select")
+                project_data = next(proj for proj in st.session_state.projects if proj["name"] == selected_project)
+                st.write("**Project Details:**")
+                st.json(project_data)
+
+                # Option to delete project
+                if st.button("Delete Project", key=f"delete_{selected_project}"):
+                    st.session_state.projects = [proj for proj in st.session_state.projects if
+                                                 proj["name"] != selected_project]
                     save_projects()
-                    st.success(f"Project {project_name} registered successfully!")
-
-    elif project_action == "View Existing Projects":
-        load_projects()
-
-        if st.session_state.projects:
-            project_names = [proj["name"] for proj in st.session_state.projects]
-            selected_project = st.selectbox("Select a Project to Track", project_names, key="existing_project_select")
-            project_data = next(proj for proj in st.session_state.projects if proj["name"] == selected_project)
-
-            # Display project details in a more visual format
-            st.markdown("### Project Details")
-            
-            # Card Layout for project details
-            col1, col2 = st.columns(2)
-            with col1:
-                st.markdown(f"**Project Name:** {project_data['name']}")
-                st.markdown(f"**Client:** {project_data['client']}")
-                st.markdown(f"**Project ID:** {project_data['id']}")
-            with col2:
-                st.markdown(f"**Start Date:** {project_data['start_date']}")
-                st.markdown(f"**End Date:** {project_data['end_date']}")
-                st.markdown(f"**Budget:** ${project_data['budget']}")
-
-            # Project Progress Bar
-            st.markdown("### Project Progress")
-            progress = project_data.get('progress', 0)
-            progress_bar = st.progress(progress)
-            st.markdown(f"Progress: {progress}%")
-
-            # Visualize project status with a simple icon or color
-            if progress == 100:
-                st.markdown("<h4 style='color: green;'>✔️ Project Completed</h4>", unsafe_allow_html=True)
-            elif progress >= 50:
-                st.markdown("<h4 style='color: orange;'>⚡ Project in Progress</h4>", unsafe_allow_html=True)
+                    st.success(f"Project {selected_project} deleted successfully!")
             else:
-                st.markdown("<h4 style='color: red;'>⏳ Project Not Started</h4>", unsafe_allow_html=True)
-
-            # Collapsible Section for Financial Overview
-            with st.expander("🔍 Financial Overview"):
-                st.markdown(f"**Total Budget:** ${project_data['budget']}")
-                st.markdown(f"**Amount Spent:** ${sum(task['cost'] for task in project_data['tasks'])}")
-                
-                # Pie chart for budget breakdown
-                task_costs = [task["cost"] for task in project_data["tasks"]]
-                task_labels = [task["name"] for task in project_data["tasks"]]
-                fig, ax = plt.subplots()
-                ax.pie(task_costs, labels=task_labels, autopct='%1.1f%%', startangle=90)
-                ax.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
-                st.pyplot(fig)
-
-            # Collapsible Section for Task Management
-            with st.expander("🗂️ Task Management"):
-                if project_data["tasks"]:
-                    task_names = [task["name"] for task in project_data["tasks"]]
-                    for task in project_data["tasks"]:
-                        st.progress(task["progress"])
-                        st.markdown(f"**{task['name']}** - {task['progress']}% Complete")
-                else:
-                    st.info("No tasks added yet.")
-
-            # Delete Project Button (Styled)
-            st.markdown("<hr>", unsafe_allow_html=True)
-            delete_button = st.button(f"❌ Delete Project: {selected_project}", key=f"delete_{selected_project}", help="This will permanently delete the project.")
-            if delete_button:
-                st.session_state.projects = [proj for proj in st.session_state.projects if proj["name"] != selected_project]
-                save_projects()
-                st.success(f"Project {selected_project} deleted successfully!")
-        else:
-            st.info("No projects available. Please register a new project.")
+                st.info("No projects available. Please register a new project.")
 
     # Tab 2: Progress Tracking
     with tab2:
