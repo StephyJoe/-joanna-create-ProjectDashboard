@@ -105,6 +105,8 @@ else:
                                                   "✅ Task Management", "📄 Documents", "💼 Interim Claims"])
 
     # Tab 1: Project Overview
+tab1, tab2 = st.tabs(["📂 Project Overview", "📊 Progress Tracking"])
+
 with tab1:
     st.header("📂 Project Overview")
     st.markdown("View and manage all your projects here.")
@@ -134,8 +136,7 @@ with tab1:
                         "start_date": start_date.isoformat(),
                         "end_date": end_date.isoformat(),
                         "budget": budget,
-                        "progress": 0,  # Initialize progress at 0%
-                        "last_updated": None,  # Initialize as not updated yet
+                        "progress": 0,
                         "tasks": [],
                         "documents": [],
                         "interim_claims": []  # Ensure interim_claims is initialized as an empty list
@@ -153,30 +154,11 @@ with tab1:
             selected_project = st.selectbox("Select a Project to Track", project_names,
                                             key="existing_project_select")
             project_data = next(proj for proj in st.session_state.projects if proj["name"] == selected_project)
-            
             st.write("**Project Details:**")
             st.json(project_data)
 
-            # Progress Gauge Chart
-            st.subheader("Overall Progress")
-            fig = go.Figure(go.Indicator(
-                mode="gauge+number",
-                value=project_data["progress"],
-                title={"text": "Overall Progress (%)"},
-                gauge={
-                    "axis": {"range": [0, 100]},
-                    "bar": {"color": "green"},
-                    "steps": [
-                        {"range": [0, 50], "color": "lightgray"},
-                        {"range": [50, 100], "color": "lightgreen"}
-                    ]
-                }
-            ))
-            st.plotly_chart(fig)
-
-            # Display last updated date
-            last_updated = project_data["last_updated"]
-            st.write(f"**Last Updated:** {last_updated if last_updated else 'Not updated yet'}")
+            # Show progress tracking tab only when a project is selected
+            st.session_state.show_progress_tracking = True
 
             # Option to delete project
             if st.button("Delete Project", key=f"delete_{selected_project}"):
@@ -186,79 +168,65 @@ with tab1:
                 st.success(f"Project {selected_project} deleted successfully!")
         else:
             st.info("No projects available. Please register a new project.")
+            st.session_state.show_progress_tracking = False  # Hide progress tracking if no project exists
 
-
-    # Tab 2: Progress Tracking
+# Tab 2: Progress Tracking
+if st.session_state.show_progress_tracking:
     with tab2:
-        import streamlit as st
-        import pandas as pd
-        from datetime import datetime
+        # Sample data for building elements
+        building_elements = ["Foundation", "Superstructure", "Roofing", "Finishes", "Electrical Work"]
 
-       # Sample data for building elements
-    building_elements = ["Foundation", "Superstructure", "Roofing", "Finishes", "Electrical Work"]
+        # Initialize or load progress data
+        if not st.session_state.progress_data:
+            st.session_state.progress_data = {
+                element: {"progress": 0, "last_updated": None} for element in building_elements
+            }
 
-    # Initialize or load progress data
-    if "progress_data" not in st.session_state:
-        st.session_state.progress_data = {
-            element: {"progress": 0, "last_updated": None} for element in building_elements
-        }
+        # Function to update progress and timestamp
+        def update_progress(element, progress_value):
+            current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            st.session_state.progress_data[element]["progress"] = progress_value
+            st.session_state.progress_data[element]["last_updated"] = current_time
 
-    # Function to update progress and timestamp
-    def update_progress(element, progress_value):
-        # Get current date and time
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        # Update progress and timestamp for the specific building element
-        st.session_state.progress_data[element]["progress"] = progress_value
-        st.session_state.progress_data[element]["last_updated"] = current_time
+        st.header("🏗️ Project Progress Tracking")
 
-    st.header("🏗️ Project Progress Tracking")
+        # Create lists to store progress data for visualization
+        progress_values = []
+        labels = []
 
-    # Create lists to store progress data for visualization
-    progress_values = []
-    labels = []
+        # Iterate through each building element for individual progress tracking
+        for element in building_elements:
+            st.subheader(f"{element}")
 
-    # Iterate through each building element for individual progress tracking
-    for element in building_elements:
-        st.subheader(f"{element}")
+            progress = st.session_state.progress_data[element]["progress"]
+            last_updated = st.session_state.progress_data[element]["last_updated"]
 
-        # Retrieve current progress and last updated timestamp
-        progress = st.session_state.progress_data[element]["progress"]
-        last_updated = st.session_state.progress_data[element]["last_updated"]
+            st.write(f"Progress: {progress}%")
+            if last_updated:
+                st.write(f"Last Updated: {last_updated}")
+            else:
+                st.write("Last Updated: Never")
 
-        # Display current progress and last updated time
-        st.write(f"Progress: {progress}%")
-        if last_updated:
-            st.write(f"Last Updated: {last_updated}")
-        else:
-            st.write("Last Updated: Never")
+            progress_slider = st.slider(f"Update Progress for {element}", 0, 100, progress)
 
-        # Slider for updating progress
-        progress_slider = st.slider(f"Update Progress for {element}", 0, 100, progress)
+            if progress_slider != progress:
+                update_progress(element, progress_slider)
 
-        # Update progress when slider is adjusted
-        if progress_slider != progress:
-            update_progress(element, progress_slider)
+            progress_values.append(st.session_state.progress_data[element]["progress"])
+            labels.append(element)
 
-        # Append data for visualization
-        progress_values.append(st.session_state.progress_data[element]["progress"])
-        labels.append(element)
+        df = pd.DataFrame({"Element": labels, "Progress": progress_values})
+        st.bar_chart(df.set_index("Element"))
 
-    # Bar chart for building elements' progress
-    st.subheader("📊 Progress of Building Elements")
-    df = pd.DataFrame({"Element": labels, "Progress": progress_values})
-    st.bar_chart(df.set_index("Element"))
+        total_progress = sum(progress_values) / len(building_elements)
+        st.subheader("🚀 Overall Project Progress")
+        st.write(f"Overall Progress: {total_progress:.2f}%")
 
-    # Calculate overall project progress
-    total_progress = sum(progress_values) / len(building_elements)
-    st.subheader("🚀 Overall Project Progress")
-    st.write(f"Overall Progress: {total_progress:.2f}%")
-
-    # Update session state for the gauge chart in Tab 1
-    if "overall_project_progress" not in st.session_state:
-        st.session_state.overall_project_progress = 0
-
-    # Update overall progress for gauge chart
-    st.session_state.overall_project_progress = total_progress
+        st.session_state.overall_project_progress = total_progress
+else:
+    with tab2:
+        st.header("📊 Progress Tracking")
+        st.write("Please select a project in the **Project Overview** tab to enable progress tracking.")
 
     # Tab 3: Financials
     with tab3:
