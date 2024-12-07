@@ -145,6 +145,8 @@ else:
                         save_projects()
                         st.success(f"Project {project_name} registered successfully!")
 
+        st.experimental_rerun()
+
         elif project_action == "View Existing Projects":
             load_projects()
 
