@@ -103,13 +103,16 @@ else:
     import matplotlib.pyplot as plt
 import pandas as pd
 
-# Tab 1: Project Overview with enhanced features
+import streamlit as st
+import matplotlib.pyplot as plt
+
+# Tab 1: Project Overview with further enhancements
 with tab1:
     st.header("📂 Project Overview")
     st.markdown("### View and manage all your projects here.")
-    
+
     project_action = st.radio("Choose an action", ["Register New Project", "View Existing Projects"])
-    
+
     if project_action == "Register New Project":
         with st.form(key="project_form"):
             col1, col2 = st.columns(2)
@@ -165,24 +168,48 @@ with tab1:
                 st.markdown(f"**End Date:** {project_data['end_date']}")
                 st.markdown(f"**Budget:** ${project_data['budget']}")
 
-            # Project Progress Bar
+            # Project Progress Bar (with manual update option)
             st.markdown("### Project Progress")
             progress = project_data.get('progress', 0)
-            progress_bar = st.progress(progress)
-            st.markdown(f"Progress: {progress}%")
+            progress_slider = st.slider("Update Progress", min_value=0, max_value=100, value=progress)
+            st.markdown(f"**Progress:** {progress_slider}%")
+            progress_bar = st.progress(progress_slider)
 
-            # Visualize project status with a simple icon or color
-            if progress == 100:
-                st.markdown("<h4 style='color: green;'>✔️ Project Completed</h4>", unsafe_allow_html=True)
-            elif progress >= 50:
-                st.markdown("<h4 style='color: orange;'>⚡ Project in Progress</h4>", unsafe_allow_html=True)
-            else:
-                st.markdown("<h4 style='color: red;'>⏳ Project Not Started</h4>", unsafe_allow_html=True)
+            # Milestone Tracker (timeline)
+            st.markdown("### Milestone Tracking")
+            milestone_dates = ["2024-12-15", "2025-01-20", "2025-02-28"]  # example milestone dates
+            milestone_labels = ["Design Phase", "Construction Start", "Project Handover"]
+            st.markdown("#### Milestones")
+            for i, (milestone, date) in enumerate(zip(milestone_labels, milestone_dates)):
+                st.markdown(f"**{milestone}:** {date}")
+                st.progress((i + 1) * 33)  # Example milestone progress
 
-            # Collapsible Section for Financial Overview
-            with st.expander("🔍 Financial Overview"):
+            # Color-coded Task Status
+            st.markdown("### Task Status")
+            for task in project_data["tasks"]:
+                task_color = "red" if task["progress"] == 0 else "orange" if task["progress"] < 50 else "green"
+                st.markdown(f"<p style='color:{task_color};'>{task['name']} - {task['progress']}% Complete</p>", unsafe_allow_html=True)
+
+            # Task Completion Buttons
+            for task in project_data["tasks"]:
+                if st.button(f"Mark {task['name']} as Completed"):
+                    task["progress"] = 100
+                    save_projects()
+                    st.success(f"Task {task['name']} marked as completed!")
+
+            # Task Search Bar
+            task_search = st.text_input("Search Tasks")
+            filtered_tasks = [task for task in project_data["tasks"] if task_search.lower() in task["name"].lower()]
+            for task in filtered_tasks:
+                st.markdown(f"**{task['name']}** - {task['progress']}% Complete")
+
+            # Financial Overview with tooltip
+            with st.expander("💰 Financial Overview"):
                 st.markdown(f"**Total Budget:** ${project_data['budget']}")
                 st.markdown(f"**Amount Spent:** ${sum(task['cost'] for task in project_data['tasks'])}")
+                
+                # Tooltip for cost breakdown
+                st.markdown("Hover over the values for a breakdown.")
                 
                 # Pie chart for budget breakdown
                 task_costs = [task["cost"] for task in project_data["tasks"]]
@@ -192,15 +219,11 @@ with tab1:
                 ax.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
                 st.pyplot(fig)
 
-            # Collapsible Section for Task Management
-            with st.expander("🗂️ Task Management"):
-                if project_data["tasks"]:
-                    task_names = [task["name"] for task in project_data["tasks"]]
-                    for task in project_data["tasks"]:
-                        st.progress(task["progress"])
-                        st.markdown(f"**{task['name']}** - {task['progress']}% Complete")
-                else:
-                    st.info("No tasks added yet.")
+            # File Upload Status Indicator
+            uploaded_file = st.file_uploader("Upload Documents")
+            if uploaded_file:
+                st.progress(100)  # Simulate file upload completion
+                st.success(f"File {uploaded_file.name} uploaded successfully.")
 
             # Delete Project Button (Styled)
             st.markdown("<hr>", unsafe_allow_html=True)
@@ -211,8 +234,6 @@ with tab1:
                 st.success(f"Project {selected_project} deleted successfully!")
         else:
             st.info("No projects available. Please register a new project.")
-
-
 
 
     # Tab 2: Progress Tracking
