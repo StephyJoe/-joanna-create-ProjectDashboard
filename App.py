@@ -12,35 +12,31 @@ st.markdown("### Your all-in-one tool for managing construction projects 🚀")
 st.markdown("---")
 
 # Initialize Session State
-if 'logged_in' not in st.session_state:
-    st.session_state.logged_in = False
-if 'user_role' not in st.session_state:
-    st.session_state.user_role = None
-if 'projects' not in st.session_state:
-    st.session_state.projects = []
-if 'username' not in st.session_state:
-    st.session_state.username = None
+def initialize_session_state():
+    if 'logged_in' not in st.session_state:
+        st.session_state.logged_in = False
+    if 'user_role' not in st.session_state:
+        st.session_state.user_role = None
+    if 'projects' not in st.session_state:
+        st.session_state.projects = []
+    if 'username' not in st.session_state:
+        st.session_state.username = None
+
+initialize_session_state()
 
 # Custom serializer for datetime objects
-
-
 def custom_serializer(obj):
     if isinstance(obj, (datetime, date)):
         return obj.isoformat()
     raise TypeError(f"Type {type(obj)} not serializable")
 
-# Save projects to JSON
-
-
+# Save and Load Projects
 def save_projects():
     try:
         with open("projects.json", "w") as file:
             json.dump(st.session_state.projects, file, indent=4, default=custom_serializer)
     except Exception as e:
         st.error(f"Error saving projects: {e}")
-
-# Load projects from JSON
-
 
 def load_projects():
     try:
@@ -50,8 +46,6 @@ def load_projects():
         st.session_state.projects = []
 
 # Login/Register System
-
-
 def login_register():
     with st.sidebar:
         st.header("🔑 Login/Register")
@@ -73,7 +67,6 @@ def login_register():
                     st.success(f"Welcome back, {username}!")
                 else:
                     st.error("Invalid credentials. Try again.")
-                    st.warning("Make sure you enter 'admin' as the username and password to test the login!")
 
         elif action_choice == "Register":
             new_username = st.text_input("Choose Username")
@@ -85,296 +78,189 @@ def login_register():
                 else:
                     st.error("Passwords do not match or fields are empty.")
 
-# Display Login/Register if not logged in
+# Main Dashboard
+def dashboard():
+    # Display Login/Register if not logged in
+    if not st.session_state.logged_in:
+        login_register()
+    else:
+        st.sidebar.header(f"👋 Welcome, {st.session_state.username}!")
+        if st.sidebar.button("Logout"):
+            st.session_state.logged_in = False
+            st.experimental_rerun()
 
+        # Tabs for Dashboard
+        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["📂 Project Overview", "📊 Progress Tracking", "💰 Financials",
+                                                        "✅ Task Management", "📄 Documents", "💼 Interim Claims"])
 
-if not st.session_state.logged_in:
-    login_register()
-else:
-    st.sidebar.header(f"👋 Welcome, {st.session_state.username}!")
-    if st.sidebar.button("Logout"):
-        st.session_state.logged_in = False
-        st.experimental_rerun()
+        # Tab 1: Project Overview
+        with tab1:
+            st.header("📂 Project Overview")
+            st.markdown("View and manage all your projects here.")
+            project_action = st.radio("Choose an action", ["Register New Project", "View Existing Projects"])
 
-    # Tabs for Dashboard
-    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["📂 Project Overview", "📊 Progress Tracking", "💰 Financials",
-                                                  "✅ Task Management", "📄 Documents", "💼 Interim Claims"])
+            if project_action == "Register New Project":
+                register_new_project()
+            elif project_action == "View Existing Projects":
+                view_existing_projects()
 
-    # Tab 1: Project Overview
-    with tab1:
-        st.header("📂 Project Overview")
-        st.markdown("View and manage all your projects here.")
-        project_action = st.radio("Choose an action", ["Register New Project", "View Existing Projects"])
-
-        if project_action == "Register New Project":
-            with st.form(key="project_form"):
-                col1, col2 = st.columns(2)
-                with col1:
-                    project_name = st.text_input("Project Name")
-                    project_id = st.text_input("Project ID")
-                    client_name = st.text_input("Client Name")
-                with col2:
-                    start_date = st.date_input("Start Date")
-                    end_date = st.date_input("End Date", min_value=start_date)
-                    budget = st.number_input("Budget ($)", min_value=0, value=100000)
-
-                submit = st.form_submit_button("Register Project")
-                if submit:
-                    if not project_name or not project_id or not client_name:
-                        st.error("All fields are required!")
-                    else:
-                        new_project = {
-                            "name": project_name,
-                            "id": project_id,
-                            "client": client_name,
-                            "start_date": start_date.isoformat(),
-                            "end_date": end_date.isoformat(),
-                            "budget": budget,
-                            "progress": 0,
-                            "tasks": [],
-                            "documents": [],
-                            "interim_claims": []  # Ensure interim_claims is initialized as an empty list
-                        }
-
-                        st.session_state.projects.append(new_project)
-                        save_projects()
-                        st.success(f"Project {project_name} registered successfully!")
-
-        elif project_action == "View Existing Projects":
-            load_projects()
-
+        # Tab 2: Progress Tracking
+        with tab2:
+            st.header("📊 Progress Tracking")
+            st.write("Monitor project progress with interactive visuals.")
             if st.session_state.projects:
-                project_names = [proj["name"] for proj in st.session_state.projects]
-                selected_project = st.selectbox("Select a Project to Track", project_names,
-                                                key="existing_project_select")
-                project_data = next(proj for proj in st.session_state.projects if proj["name"] == selected_project)
-                st.write("**Project Details:**")
-                st.json(project_data)
+                track_project_progress()
 
-                # Option to delete project
-                if st.button("Delete Project", key=f"delete_{selected_project}"):
-                    st.session_state.projects = [proj for proj in st.session_state.projects if
-                                                 proj["name"] != selected_project]
-                    save_projects()
-                    st.success(f"Project {selected_project} deleted successfully!")
+        # Tab 3: Financials
+        with tab3:
+            st.header("💰 Financial Overview")
+            st.write("Track budgets and spending dynamically.")
+            if st.session_state.projects:
+                track_project_financials()
+
+        # Tab 4: Task Management
+        with tab4:
+            st.header("✅ Task Management")
+            st.write("Assign tasks and track their progress.")
+            if st.session_state.projects:
+                manage_tasks()
+
+        # Tab 5: Documents
+        with tab5:
+            st.header("📄 Document Management")
+            st.write("Upload and manage project documents.")
+            if st.session_state.projects:
+                manage_documents()
+
+        # Tab 6: Interim Claims
+        with tab6:
+            st.header("💼 Interim Claims")
+            st.write("Manage interim claims and track payments.")
+            if st.session_state.projects:
+                manage_interim_claims()
+
+# Register New Project
+def register_new_project():
+    with st.form(key="project_form"):
+        col1, col2 = st.columns(2)
+        with col1:
+            project_name = st.text_input("Project Name")
+            project_id = st.text_input("Project ID")
+            client_name = st.text_input("Client Name")
+        with col2:
+            start_date = st.date_input("Start Date")
+            end_date = st.date_input("End Date", min_value=start_date)
+            budget = st.number_input("Budget ($)", min_value=0, value=100000)
+
+        submit = st.form_submit_button("Register Project")
+        if submit:
+            if not project_name or not project_id or not client_name:
+                st.error("All fields are required!")
             else:
-                st.info("No projects available. Please register a new project.")
+                new_project = {
+                    "name": project_name,
+                    "id": project_id,
+                    "client": client_name,
+                    "start_date": start_date.isoformat(),
+                    "end_date": end_date.isoformat(),
+                    "budget": budget,
+                    "progress": 0,
+                    "tasks": [],
+                    "documents": [],
+                    "interim_claims": []
+                }
 
-    # Tab 2: Progress Tracking
-    with tab2:
-        st.header("📊 Progress Tracking")
-        st.write("Monitor project progress with interactive visuals.")
-        if st.session_state.projects:
-            project_names = [proj["name"] for proj in st.session_state.projects]
-            selected_project = st.selectbox("Select a Project to Track", project_names, key="progress_tracking_select")
-            project_data = next(proj for proj in st.session_state.projects if proj["name"] == selected_project)
-
-            if "progress" not in project_data:
-                project_data["progress"] = 0  # Initialize progress if not present
-
-            progress = st.slider("Update Progress (%)", 0, 100, project_data["progress"],
-                                 key=f"progress_slider_{selected_project}")
-            project_data["progress"] = progress
-            save_projects()
-            st.success(f"Updated progress for {project_data['name']} to {progress}%!")
-
-            # Display progress using a gauge chart
-            fig = go.Figure(go.Indicator(
-                mode="gauge+number",
-                value=progress,
-                title={"text": "Project Progress"},
-                gauge={"axis": {"range": [0, 100]}}))
-            st.plotly_chart(fig)
-
-            # Display overall progress graph
-            st.subheader("Project Progress - Milestone Overview")
-            milestone_data = {
-                'Milestone': ['Planning', 'Design', 'Construction', 'Completion'],
-                'Progress': [20, 40, 60, progress]
-            }
-            progress_fig = px.bar(milestone_data, x='Milestone', y='Progress', title="Project Milestones")
-            st.plotly_chart(progress_fig)
-
-    # Tab 3: Financials
-    with tab3:
-        st.header("💰 Financial Overview")
-        st.write("Track budgets and spending dynamically.")
-        if st.session_state.projects:
-            project_names = [proj["name"] for proj in st.session_state.projects]
-            selected_project = st.selectbox("Select a Project for Financials", project_names, key="financials_select")
-            project_data = next(proj for proj in st.session_state.projects if proj["name"] == selected_project)
-
-            spent = st.number_input("Spent Amount ($)", min_value=0, value=0, key=f"spent_input_{selected_project}")
-            remaining = project_data["budget"] - spent
-            st.write(f"Remaining Budget: ${remaining}")
-
-            # Display financial breakdown
-            financial_data = {
-                "Spent": spent,
-                "Remaining": remaining,
-                "Total Budget": project_data["budget"]
-            }
-            financial_fig = px.pie(names=list(financial_data.keys()), values=list(financial_data.values()),
-                                   title="Budget Breakdown")
-            st.plotly_chart(financial_fig)
-
-    # Tab 4: Task Management
-    with tab4:
-        st.header("✅ Task Management")
-        st.write("Assign tasks and track their progress.")
-        if st.session_state.projects:
-            project_names = [proj["name"] for proj in st.session_state.projects]
-            selected_project = st.selectbox("Select a Project for Task Management", project_names,
-                                            key="task_management_select")
-            project_data = next(proj for proj in st.session_state.projects if proj["name"] == selected_project)
-
-            task_action = st.radio("What would you like to do?", ["View Tasks", "Add New Task"])
-
-            if task_action == "Add New Task":
-                task_name = st.text_input("Task Name")
-                task_due = st.date_input("Due Date")
-                task_progress = st.slider("Task Progress (%)", 0, 100)
-                if st.button("Add Task"):
-                    project_data["tasks"].append({
-                        "name": task_name,
-                        "due": task_due.isoformat(),
-                        "progress": task_progress
-                    })
-                    save_projects()
-                    st.success(f"Task {task_name} added successfully!")
-
-            elif task_action == "View Tasks":
-                st.write(project_data["tasks"])
-
-    # Tab 5: Documents
-    with tab5:
-        st.header("📄 Document Management")
-        st.write("Upload and manage project documents.")
-        if st.session_state.projects:
-            project_names = [proj["name"] for proj in st.session_state.projects]
-            selected_project = st.selectbox("Select a Project for Documents", project_names,
-                                            key="document_management_select")
-            project_data = next(proj for proj in st.session_state.projects if proj["name"] == selected_project)
-
-            document = st.file_uploader("Upload Document", type=["pdf", "docx", "png", "jpg", "jpeg"])
-            if document:
-                project_data["documents"].append(document)
+                st.session_state.projects.append(new_project)
                 save_projects()
-                st.success(f"Document uploaded successfully!")
+                st.success(f"Project {project_name} registered successfully!")
 
-    # Tab 6: Interim Claims
-    with tab6:
-        st.header("💼 Interim Claims")
-        st.write("Manage interim claims and track payments.")
+# View Existing Projects
+def view_existing_projects():
+    load_projects()
 
-        if st.session_state.projects:
-            project_names = [proj["name"] for proj in st.session_state.projects]
-            selected_project = st.selectbox("Select a Project for Interim Claims", project_names,
-                                            key="interim_claims_select")
-            project_data = next(proj for proj in st.session_state.projects if proj["name"] == selected_project)
+    if st.session_state.projects:
+        project_names = [proj["name"] for proj in st.session_state.projects]
+        selected_project = st.selectbox("Select a Project to Track", project_names,
+                                        key="existing_project_select")
+        project_data = next(proj for proj in st.session_state.projects if proj["name"] == selected_project)
+        st.write("**Project Details:**")
+        st.json(project_data)
 
-            # Ensure interim_claims is initialized
-            if "interim_claims" not in project_data:
-                project_data["interim_claims"] = []
+        # Option to delete project
+        if st.button("Delete Project", key=f"delete_{selected_project}"):
+            st.session_state.projects = [proj for proj in st.session_state.projects if
+                                         proj["name"] != selected_project]
+            save_projects()
+            st.success(f"Project {selected_project} deleted successfully!")
+    else:
+        st.info("No projects available. Please register a new project.")
 
-            interim_claim_action = st.radio("Interim Claims Action",
-                                            ["View Claims", "Add New Claim", "Update Claim Status"])
+# Track Project Progress
+def track_project_progress():
+    project_names = [proj["name"] for proj in st.session_state.projects]
+    selected_project = st.selectbox("Select a Project to Track", project_names, key="progress_tracking_select")
+    project_data = next(proj for proj in st.session_state.projects if proj["name"] == selected_project)
 
-            if interim_claim_action == "Add New Claim":
-                # Add New Claim Form
-                claim_amount = st.number_input("Claim Amount ($)", min_value=0)
-                claim_status = st.selectbox("Claim Status", ["Pending", "Approved", "Rejected"])
-                payment_schedule = st.date_input("Payment Schedule")
-                notes = st.text_area("Claim Notes", placeholder="Add any notes or comments")
+    if "progress" not in project_data:
+        project_data["progress"] = 0  # Initialize progress if not present
 
-                if st.button("Add Claim"):
-                    project_data["interim_claims"].append({
-                        "amount": claim_amount,
-                        "status": claim_status,
-                        "payment_schedule": payment_schedule.isoformat(),
-                        "notes": notes
-                    })
-                    save_projects()
-                    st.success(f"Claim of ${claim_amount} added successfully!")
+    progress = st.slider("Update Progress (%)", 0, 100, project_data["progress"],
+                         key=f"progress_slider_{selected_project}")
+    project_data["progress"] = progress
+    save_projects()
+    st.success(f"Updated progress for {project_data['name']} to {progress}%!")
 
-            elif interim_claim_action == "View Claims":
-                # View Claims in Table Form with Search and Filter
-                if project_data["interim_claims"]:
-                    # Convert claims data to DataFrame
-                    claims_df = pd.DataFrame(project_data["interim_claims"])
-                    claims_df.index += 1  # Start indexing from 1
-                    claims_df = claims_df.rename(columns={
-                        "amount": "Claim Amount ($)",
-                        "status": "Claim Status",
-                        "payment_schedule": "Payment Schedule",
-                        "notes": "Claim Notes"
-                    })
+    # Display progress using a gauge chart
+    fig = go.Figure(go.Indicator(
+        mode="gauge+number",
+        value=progress,
+        title={"text": "Project Progress"},
+        gauge={"axis": {"range": [0, 100]}}))
+    st.plotly_chart(fig)
 
-                    # Filter by status, amount, or date
-                    filter_status = st.selectbox("Filter by Claim Status", ["All", "Pending", "Approved", "Rejected"],
-                                                 index=0)
-                    if filter_status != "All":
-                        claims_df = claims_df[claims_df["Claim Status"] == filter_status]
+    # Display overall progress graph
+    st.subheader("Project Progress - Milestone Overview")
+    milestone_data = {
+        'Milestone': ['Planning', 'Design', 'Construction', 'Completion'],
+        'Progress': [20, 40, 60, progress]
+    }
+    progress_fig = px.bar(milestone_data, x='Milestone', y='Progress', title="Project Milestones")
+    st.plotly_chart(progress_fig)
 
-                    # Search bar for amount or notes
-                    search_term = st.text_input("Search Claims", "")
-                    if search_term:
-                        claims_df = claims_df[
-                            claims_df.apply(lambda row: row.astype(str).str.contains(search_term).any(), axis=1)]
+# Track Financials
+def track_project_financials():
+    project_names = [proj["name"] for proj in st.session_state.projects]
+    selected_project = st.selectbox("Select a Project for Financials", project_names, key="financials_select")
+    project_data = next(proj for proj in st.session_state.projects if proj["name"] == selected_project)
 
-                    # Sorting options
-                    sort_by = st.selectbox("Sort Claims By", ["Claim Amount ($)", "Payment Schedule", "Claim Status"],
-                                           index=0)
-                    claims_df = claims_df.sort_values(by=sort_by, ascending=True)
+    spent = st.number_input("Spent Amount ($)", min_value=0, value=0, key=f"spent_input_{selected_project}")
+    remaining = project_data["budget"] - spent
+    st.write(f"Remaining Budget: ${remaining}")
 
-                    # Display the claims table
-                    st.dataframe(claims_df)
+    # Display financial breakdown
+    financial_data = {
+        "Spent": spent,
+        "Remaining": remaining,
+        "Total Budget": project_data["budget"]
+    }
 
-                    # Export Claims to CSV
-                    if st.button("Export Claims to CSV"):
-                        csv = claims_df.to_csv(index=False)
-                        st.download_button("Download CSV", csv, "claims_data.csv", "text/csv")
+    fig = go.Figure(go.Pie(labels=list(financial_data.keys()), values=list(financial_data.values())))
+    st.plotly_chart(fig)
 
-                else:
-                    st.info("No interim claims found for this project.")
+# Task Management (Placeholder Function)
+def manage_tasks():
+    st.write("Here you can manage tasks for the selected project.")
+    st.info("Task management functionality coming soon!")
 
-            elif interim_claim_action == "Update Claim Status":
-                # Update Existing Claim Status
-                if project_data["interim_claims"]:
-                    claim_options = [f"Claim #{idx + 1}" for idx in range(len(project_data["interim_claims"]))]
-                    selected_claim = st.selectbox("Select a Claim to Update", claim_options)
+# Document Management (Placeholder Function)
+def manage_documents():
+    st.write("Here you can manage documents for the selected project.")
+    st.info("Document management functionality coming soon!")
 
-                    # Get the selected claim's index
-                    claim_idx = claim_options.index(selected_claim)
-                    selected_claim_data = project_data["interim_claims"][claim_idx]
+# Interim Claims (Placeholder Function)
+def manage_interim_claims():
+    st.write("Here you can manage interim claims for the selected project.")
+    st.info("Interim claims functionality coming soon!")
 
-                    # Allow user to update the status of the selected claim
-                    new_status = st.selectbox("Update Claim Status", ["Pending", "Approved", "Rejected"],
-                                              index=["Pending", "Approved", "Rejected"].index(
-                                                  selected_claim_data["status"]))
-
-                    if st.button(f"Update Status for {selected_claim}"):
-                        # Update the claim's status
-                        project_data["interim_claims"][claim_idx]["status"] = new_status
-                        save_projects()
-                        st.success(f"The status for {selected_claim} has been updated to {new_status}.")
-                else:
-                    st.info("No interim claims found for this project.")
-
-            # Claim History or Audit Trail
-            if project_data["interim_claims"]:
-                st.subheader("Claim History / Audit Trail")
-                # Updated for handling missing 'notes'
-                audit_data = []
-                for claim in project_data["interim_claims"]:
-                    audit_data.append({
-                        "Claim Amount": claim["amount"],
-                        "Status": claim["status"],
-                        "Payment Schedule": claim["payment_schedule"],
-                        "Notes": claim.get("notes", "No notes provided")
-                        # Using get to avoid errors if 'notes' is missing
-                    })
-
-                if audit_data:
-                    audit_df = pd.DataFrame(audit_data)
-                    st.write(audit_df)
+# Run the Dashboard
+dashboard()
