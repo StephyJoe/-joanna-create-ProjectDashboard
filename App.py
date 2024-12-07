@@ -109,6 +109,9 @@ import matplotlib.pyplot as plt
 import matplotlib.pyplot as plt
 import pandas as pd
 
+import matplotlib.pyplot as plt
+import pandas as pd
+
 # Tab 1: Project Overview with enhanced features
 with tab1:
     st.header("📂 Project Overview")
@@ -217,7 +220,6 @@ with tab1:
                 st.success(f"Project {selected_project} deleted successfully!")
         else:
             st.info("No projects available. Please register a new project.")
-
 
 
     # Tab 2: Progress Tracking
