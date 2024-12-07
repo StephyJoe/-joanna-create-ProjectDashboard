@@ -100,224 +100,100 @@ else:
     tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["📂 Project Overview", "📊 Progress Tracking", "💰 Financials",
                                                   "✅ Task Management", "📄 Documents", "💼 Interim Claims"])
 
-    import matplotlib.pyplot as plt
-import pandas as pd
+    # Tab 1: Project Overview
+    with tab1:
+        st.header("📂 Project Overview")
+        st.markdown("View and manage all your projects here.")
+        project_action = st.radio("Choose an action", ["Register New Project", "View Existing Projects"])
 
-import streamlit as st
-import matplotlib.pyplot as plt
+        if project_action == "Register New Project":
+            with st.form(key="project_form"):
+                col1, col2 = st.columns(2)
+                with col1:
+                    project_name = st.text_input("Project Name")
+                    project_id = st.text_input("Project ID")
+                    client_name = st.text_input("Client Name")
+                with col2:
+                    start_date = st.date_input("Start Date")
+                    end_date = st.date_input("End Date", min_value=start_date)
+                    budget = st.number_input("Budget ($)", min_value=0, value=100000)
 
-import matplotlib.pyplot as plt
-import pandas as pd
+                submit = st.form_submit_button("Register Project")
+                if submit:
+                    if not project_name or not project_id or not client_name:
+                        st.error("All fields are required!")
+                    else:
+                        new_project = {
+                            "name": project_name,
+                            "id": project_id,
+                            "client": client_name,
+                            "start_date": start_date.isoformat(),
+                            "end_date": end_date.isoformat(),
+                            "budget": budget,
+                            "progress": 0,
+                            "tasks": [],
+                            "documents": [],
+                            "interim_claims": []  # Ensure interim_claims is initialized as an empty list
+                        }
 
-import matplotlib.pyplot as plt
-import pandas as pd
+                        st.session_state.projects.append(new_project)
+                        save_projects()
+                        st.success(f"Project {project_name} registered successfully!")
 
-# Tab 1: Project Overview with enhanced features
-with tab1:
-    st.header("📂 Project Overview")
-    st.markdown("### View and manage all your projects here.")
-    
-    project_action = st.radio("Choose an action", ["Register New Project", "View Existing Projects"])
-    
-    if project_action == "Register New Project":
-        with st.form(key="project_form"):
-            col1, col2 = st.columns(2)
-            with col1:
-                project_name = st.text_input("Project Name")
-                project_id = st.text_input("Project ID")
-                client_name = st.text_input("Client Name")
-            with col2:
-                start_date = st.date_input("Start Date")
-                end_date = st.date_input("End Date", min_value=start_date)
-                budget = st.number_input("Budget ($)", min_value=0, value=100000)
+        elif project_action == "View Existing Projects":
+            load_projects()
 
-            submit = st.form_submit_button("Register Project")
-            if submit:
-                if not project_name or not project_id or not client_name:
-                    st.error("All fields are required!")
-                else:
-                    new_project = {
-                        "name": project_name,
-                        "id": project_id,
-                        "client": client_name,
-                        "start_date": start_date.isoformat(),
-                        "end_date": end_date.isoformat(),
-                        "budget": budget,
-                        "progress": 0,
-                        "tasks": [],
-                        "documents": [],
-                        "interim_claims": []
-                    }
-                    st.session_state.projects.append(new_project)
+            if st.session_state.projects:
+                project_names = [proj["name"] for proj in st.session_state.projects]
+                selected_project = st.selectbox("Select a Project to Track", project_names,
+                                                key="existing_project_select")
+                project_data = next(proj for proj in st.session_state.projects if proj["name"] == selected_project)
+                st.write("**Project Details:**")
+                st.json(project_data)
+
+                # Option to delete project
+                if st.button("Delete Project", key=f"delete_{selected_project}"):
+                    st.session_state.projects = [proj for proj in st.session_state.projects if
+                                                 proj["name"] != selected_project]
                     save_projects()
-                    st.success(f"Project {project_name} registered successfully!")
+                    st.success(f"Project {selected_project} deleted successfully!")
+            else:
+                st.info("No projects available. Please register a new project.")
 
-    elif project_action == "View Existing Projects":
-        load_projects()
-
+    # Tab 2: Progress Tracking
+    with tab2:
+        st.header("📊 Progress Tracking")
+        st.write("Monitor project progress with interactive visuals.")
         if st.session_state.projects:
             project_names = [proj["name"] for proj in st.session_state.projects]
-            selected_project = st.selectbox("Select a Project to Track", project_names, key="existing_project_select")
+            selected_project = st.selectbox("Select a Project to Track", project_names, key="progress_tracking_select")
             project_data = next(proj for proj in st.session_state.projects if proj["name"] == selected_project)
 
-            # Display project details in a more visual format
-            st.markdown("### Project Details")
-            
-            # Card Layout for project details
-            col1, col2 = st.columns(2)
-            with col1:
-                st.markdown(f"**Project Name:** {project_data['name']}")
-                st.markdown(f"**Client:** {project_data['client']}")
-                st.markdown(f"**Project ID:** {project_data['id']}")
-            with col2:
-                st.markdown(f"**Start Date:** {project_data['start_date']}")
-                st.markdown(f"**End Date:** {project_data['end_date']}")
-                st.markdown(f"**Budget:** ${project_data['budget']}")
+            if "progress" not in project_data:
+                project_data["progress"] = 0  # Initialize progress if not present
 
-            # Project Progress Bar
-            st.markdown("### Project Progress")
-            progress = project_data.get('progress', 0)
-            progress_bar = st.progress(progress)
-            st.markdown(f"Progress: {progress}%")
+            progress = st.slider("Update Progress (%)", 0, 100, project_data["progress"],
+                                 key=f"progress_slider_{selected_project}")
+            project_data["progress"] = progress
+            save_projects()
+            st.success(f"Updated progress for {project_data['name']} to {progress}%!")
 
-            # Visualize project status with a simple icon or color
-            if progress == 100:
-                st.markdown("<h4 style='color: green;'>✔️ Project Completed</h4>", unsafe_allow_html=True)
-            elif progress >= 50:
-                st.markdown("<h4 style='color: orange;'>⚡ Project in Progress</h4>", unsafe_allow_html=True)
-            else:
-                st.markdown("<h4 style='color: red;'>⏳ Project Not Started</h4>", unsafe_allow_html=True)
+            # Display progress using a gauge chart
+            fig = go.Figure(go.Indicator(
+                mode="gauge+number",
+                value=progress,
+                title={"text": "Project Progress"},
+                gauge={"axis": {"range": [0, 100]}}))
+            st.plotly_chart(fig)
 
-            # Collapsible Section for Financial Overview
-            with st.expander("🔍 Financial Overview"):
-                st.markdown(f"**Total Budget:** ${project_data['budget']}")
-                st.markdown(f"**Amount Spent:** ${sum(task['cost'] for task in project_data['tasks'])}")
-                
-                # Pie chart for budget breakdown
-                task_costs = [task["cost"] for task in project_data["tasks"]]
-                task_labels = [task["name"] for task in project_data["tasks"]]
-                fig, ax = plt.subplots()
-                ax.pie(task_costs, labels=task_labels, autopct='%1.1f%%', startangle=90)
-                ax.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
-                st.pyplot(fig)
-
-            # Collapsible Section for Task Management
-            with st.expander("🗂️ Task Management"):
-                if project_data["tasks"]:
-                    task_names = [task["name"] for task in project_data["tasks"]]
-                    for task in project_data["tasks"]:
-                        st.progress(task["progress"])
-                        st.markdown(f"**{task['name']}** - {task['progress']}% Complete")
-                else:
-                    st.info("No tasks added yet.")
-
-            # Delete Project Button (Styled)
-            st.markdown("<hr>", unsafe_allow_html=True)
-            delete_button = st.button(f"❌ Delete Project: {selected_project}", key=f"delete_{selected_project}", help="This will permanently delete the project.")
-            if delete_button:
-                st.session_state.projects = [proj for proj in st.session_state.projects if proj["name"] != selected_project]
-                save_projects()
-                st.success(f"Project {selected_project} deleted successfully!")
-        else:
-            st.info("No projects available. Please register a new project.")
-
-
-    # Tab 2: Progress Tracking with improvements
-with tab2:
-    st.header("📊 Project Progress Tracking")
-    st.markdown("### Track the progress of all your project tasks.")
-
-    project_names = [proj["name"] for proj in st.session_state.projects]
-    selected_project = st.selectbox("Select a Project to Track", project_names, key="progress_tracking_project")
-
-    project_data = next(proj for proj in st.session_state.projects if proj["name"] == selected_project)
-
-    # Display Milestones and Overall Project Progress
-    st.markdown("### Project Milestones and Timeline")
-    
-    # Sample milestones
-    milestones = [
-        {"name": "Design Phase", "status": "Completed", "progress": 100},
-        {"name": "Construction Phase", "status": "In Progress", "progress": 60},
-        {"name": "Final Inspection", "status": "Not Started", "progress": 0}
-    ]
-    
-    milestone_progress = [milestone['progress'] for milestone in milestones]
-    milestone_names = [milestone['name'] for milestone in milestones]
-    
-    # Progress bar for milestones
-    for i, milestone in enumerate(milestones):
-        st.markdown(f"**{milestone['name']}** - {milestone['status']}")
-        st.progress(milestone['progress'])
-        st.markdown(f"Progress: {milestone['progress']}%")
-    
-    # Display Overall Project Progress as a Gauge
-    st.markdown("### Overall Project Progress")
-    overall_progress = project_data['progress']  # Can be dynamically calculated
-    st.progress(overall_progress)
-
-    st.markdown(f"**Overall Progress: {overall_progress}%**")
-    
-    # Visualize Task Progress with a Bar Chart
-    st.markdown("### Task Progress Breakdown")
-    task_names = [task["name"] for task in project_data["tasks"]]
-    task_progress = [task["progress"] for task in project_data["tasks"]]
-    
-    fig, ax = plt.subplots()
-    ax.barh(task_names, task_progress, color='skyblue')
-    ax.set_xlabel('Progress (%)')
-    ax.set_title('Task Progress Breakdown')
-    st.pyplot(fig)
-
-    # Task Tracking - Editable Progress Bar and Task Updates
-    st.markdown("### Task Details")
-    for i, task in enumerate(project_data["tasks"]):
-        with st.expander(f"📌 Task: {task['name']}"):
-            task_progress = st.slider(f"Progress for {task['name']}", 0, 100, task['progress'])
-            task["progress"] = task_progress  # Update progress in real-time
-            task["last_updated"] = pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')
-            
-            # Show additional details like task deadline, description, and upload functionality
-            task_description = st.text_area(f"Description for {task['name']}", task.get("description", ""), key=f"description_{i}")
-            task_deadline = st.date_input(f"Deadline for {task['name']}", pd.to_datetime(task.get("deadline", pd.Timestamp.today())).date(), key=f"deadline_{i}")
-            task["description"] = task_description
-            task["deadline"] = task_deadline.isoformat()
-
-            # Button to upload related documents
-            st.file_uploader(f"Upload files for {task['name']}", type=["jpg", "png", "pdf"], key=f"upload_{i}")
-
-            # Show last updated time
-            st.markdown(f"Last Updated: {task.get('last_updated', 'Not updated yet')}")
-
-    # Filter Tasks by Status (In Progress, Completed, Not Started)
-    task_status_filter = st.radio("Filter Tasks by Status", ["All", "Completed", "In Progress", "Not Started"])
-
-    filtered_tasks = []
-    if task_status_filter == "All":
-        filtered_tasks = project_data["tasks"]
-    elif task_status_filter == "Completed":
-        filtered_tasks = [task for task in project_data["tasks"] if task["progress"] == 100]
-    elif task_status_filter == "In Progress":
-        filtered_tasks = [task for task in project_data["tasks"] if 0 < task["progress"] < 100]
-    elif task_status_filter == "Not Started":
-        filtered_tasks = [task for task in project_data["tasks"] if task["progress"] == 0]
-
-    # Display filtered tasks
-    st.markdown(f"### Tasks with Status: {task_status_filter}")
-    for task in filtered_tasks:
-        st.markdown(f"- **{task['name']}**: {task['progress']}% Complete")
-    
-    # Task Progress Summary
-    st.markdown("### Task Progress Summary")
-    total_tasks = len(project_data["tasks"])
-    completed_tasks = len([task for task in project_data["tasks"] if task["progress"] == 100])
-    in_progress_tasks = len([task for task in project_data["tasks"] if 0 < task["progress"] < 100])
-    not_started_tasks = len([task for task in project_data["tasks"] if task["progress"] == 0])
-    
-    st.markdown(f"Total Tasks: {total_tasks}")
-    st.markdown(f"Completed Tasks: {completed_tasks}")
-    st.markdown(f"In Progress Tasks: {in_progress_tasks}")
-    st.markdown(f"Not Started Tasks: {not_started_tasks}")
+            # Display overall progress graph
+            st.subheader("Project Progress - Milestone Overview")
+            milestone_data = {
+                'Milestone': ['Planning', 'Design', 'Construction', 'Completion'],
+                'Progress': [20, 40, 60, progress]
+            }
+            progress_fig = px.bar(milestone_data, x='Milestone', y='Progress', title="Project Milestones")
+            st.plotly_chart(progress_fig)
 
     # Tab 3: Financials
     with tab3:
