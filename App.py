@@ -223,64 +223,39 @@ with tab1:
 
 
     # Tab 2: Progress Tracking
-with tab2:
-    st.header("🚧 Project Progress Tracking")
-    
-    # Select Project to View Progress
-    project_names = [proj["name"] for proj in st.session_state.projects]
-    selected_project = st.selectbox("Select a Project to Track Progress", project_names)
-    project_data = next(proj for proj in st.session_state.projects if proj["name"] == selected_project)
+    with tab2:
+        st.header("📊 Progress Tracking")
+        st.write("Monitor project progress with interactive visuals.")
+        if st.session_state.projects:
+            project_names = [proj["name"] for proj in st.session_state.projects]
+            selected_project = st.selectbox("Select a Project to Track", project_names, key="progress_tracking_select")
+            project_data = next(proj for proj in st.session_state.projects if proj["name"] == selected_project)
 
-    # Display Progress Information
-    st.markdown("### Overall Project Progress")
-    overall_progress = project_data['progress']
-    st.progress(overall_progress)
-    st.markdown(f"Overall Progress: {overall_progress}%")
+            if "progress" not in project_data:
+                project_data["progress"] = 0  # Initialize progress if not present
 
-    # Detailed Milestone Tracking
-    st.markdown("### Milestone Progress")
-    for milestone in milestones:
-        col1, col2 = st.columns([3, 1])
-        with col1:
-            st.markdown(f"**{milestone['milestone']}**")
-            st.progress(milestone['progress'])
-            st.markdown(f"Status: {milestone['status']}")
-            st.markdown(f"Deadline: {milestone['deadline']}")
-        
-        with col2:
-            # Button to update progress (Example)
-            if st.button(f"Update {milestone['milestone']} Progress"):
-                new_progress = st.slider(f"Update {milestone['milestone']} Progress", min_value=0, max_value=100, value=milestone['progress'])
-                milestone['progress'] = new_progress
-                st.success(f"Updated progress for {milestone['milestone']} to {new_progress}%")
-        
-    # Calculate and display the overall progress based on milestones
-    milestone_progress = sum([m["progress"] for m in milestones]) / len(milestones)
-    st.markdown("### Updated Overall Progress Based on Milestones")
-    st.progress(milestone_progress)
-    st.markdown(f"Milestone-Based Progress: {milestone_progress:.1f}%")
+            progress = st.slider("Update Progress (%)", 0, 100, project_data["progress"],
+                                 key=f"progress_slider_{selected_project}")
+            project_data["progress"] = progress
+            save_projects()
+            st.success(f"Updated progress for {project_data['name']} to {progress}%!")
 
-    # Interactive Gantt Chart
-    st.markdown("### Gantt Chart")
-    gantt_data = pd.DataFrame(milestones)
-    gantt_data['Start Date'] = pd.to_datetime(["2024-12-01", "2025-01-01", "2025-02-01", "2025-03-01"])
-    gantt_data['End Date'] = pd.to_datetime([milestone['deadline'] for milestone in milestones])
-    
-    fig = px.timeline(gantt_data, x_start="Start Date", x_end="End Date", y="milestone", title="Project Gantt Chart")
-    fig.update_yaxes(categoryorder="total ascending")
-    st.plotly_chart(fig)
+            # Display progress using a gauge chart
+            fig = go.Figure(go.Indicator(
+                mode="gauge+number",
+                value=progress,
+                title={"text": "Project Progress"},
+                gauge={"axis": {"range": [0, 100]}}))
+            st.plotly_chart(fig)
 
-    # Scrollable Task List
-    st.markdown("### Task List")
-    tasks = project_data.get('tasks', [])
-    task_list = st.beta_expander("View Tasks", expanded=True)
-    with task_list:
-        if tasks:
-            for task in tasks:
-                st.markdown(f"**{task['name']}** - {task['progress']}% Complete")
-                st.progress(task['progress'])
-        else:
-            st.info("No tasks added yet.")
+            # Display overall progress graph
+            st.subheader("Project Progress - Milestone Overview")
+            milestone_data = {
+                'Milestone': ['Planning', 'Design', 'Construction', 'Completion'],
+                'Progress': [20, 40, 60, progress]
+            }
+            progress_fig = px.bar(milestone_data, x='Milestone', y='Progress', title="Project Milestones")
+            st.plotly_chart(progress_fig)
 
     # Tab 3: Financials
     with tab3:
