@@ -100,7 +100,10 @@ else:
     tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["📂 Project Overview", "📊 Progress Tracking", "💰 Financials",
                                                   "✅ Task Management", "📄 Documents", "💼 Interim Claims"])
 
-    # Tab 1: Project Overview
+    import matplotlib.pyplot as plt
+import pandas as pd
+
+# Tab 1: Project Overview with enhanced features
 with tab1:
     st.header("📂 Project Overview")
     st.markdown("### View and manage all your projects here.")
@@ -176,13 +179,39 @@ with tab1:
             else:
                 st.markdown("<h4 style='color: red;'>⏳ Project Not Started</h4>", unsafe_allow_html=True)
 
-            # Option to delete project
-            if st.button(f"Delete Project: {selected_project}", key=f"delete_{selected_project}"):
+            # Collapsible Section for Financial Overview
+            with st.expander("🔍 Financial Overview"):
+                st.markdown(f"**Total Budget:** ${project_data['budget']}")
+                st.markdown(f"**Amount Spent:** ${sum(task['cost'] for task in project_data['tasks'])}")
+                
+                # Pie chart for budget breakdown
+                task_costs = [task["cost"] for task in project_data["tasks"]]
+                task_labels = [task["name"] for task in project_data["tasks"]]
+                fig, ax = plt.subplots()
+                ax.pie(task_costs, labels=task_labels, autopct='%1.1f%%', startangle=90)
+                ax.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+                st.pyplot(fig)
+
+            # Collapsible Section for Task Management
+            with st.expander("🗂️ Task Management"):
+                if project_data["tasks"]:
+                    task_names = [task["name"] for task in project_data["tasks"]]
+                    for task in project_data["tasks"]:
+                        st.progress(task["progress"])
+                        st.markdown(f"**{task['name']}** - {task['progress']}% Complete")
+                else:
+                    st.info("No tasks added yet.")
+
+            # Delete Project Button (Styled)
+            st.markdown("<hr>", unsafe_allow_html=True)
+            delete_button = st.button(f"❌ Delete Project: {selected_project}", key=f"delete_{selected_project}", help="This will permanently delete the project.")
+            if delete_button:
                 st.session_state.projects = [proj for proj in st.session_state.projects if proj["name"] != selected_project]
                 save_projects()
                 st.success(f"Project {selected_project} deleted successfully!")
         else:
             st.info("No projects available. Please register a new project.")
+
 
 
 
