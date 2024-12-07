@@ -222,40 +222,102 @@ with tab1:
             st.info("No projects available. Please register a new project.")
 
 
-    # Tab 2: Progress Tracking
-    with tab2:
-        st.header("📊 Progress Tracking")
-        st.write("Monitor project progress with interactive visuals.")
-        if st.session_state.projects:
-            project_names = [proj["name"] for proj in st.session_state.projects]
-            selected_project = st.selectbox("Select a Project to Track", project_names, key="progress_tracking_select")
-            project_data = next(proj for proj in st.session_state.projects if proj["name"] == selected_project)
+    # Tab 2: Progress Tracking with improvements
+with tab2:
+    st.header("📊 Project Progress Tracking")
+    st.markdown("### Track the progress of all your project tasks.")
 
-            if "progress" not in project_data:
-                project_data["progress"] = 0  # Initialize progress if not present
+    project_names = [proj["name"] for proj in st.session_state.projects]
+    selected_project = st.selectbox("Select a Project to Track", project_names, key="progress_tracking_project")
 
-            progress = st.slider("Update Progress (%)", 0, 100, project_data["progress"],
-                                 key=f"progress_slider_{selected_project}")
-            project_data["progress"] = progress
-            save_projects()
-            st.success(f"Updated progress for {project_data['name']} to {progress}%!")
+    project_data = next(proj for proj in st.session_state.projects if proj["name"] == selected_project)
 
-            # Display progress using a gauge chart
-            fig = go.Figure(go.Indicator(
-                mode="gauge+number",
-                value=progress,
-                title={"text": "Project Progress"},
-                gauge={"axis": {"range": [0, 100]}}))
-            st.plotly_chart(fig)
+    # Display Milestones and Overall Project Progress
+    st.markdown("### Project Milestones and Timeline")
+    
+    # Sample milestones
+    milestones = [
+        {"name": "Design Phase", "status": "Completed", "progress": 100},
+        {"name": "Construction Phase", "status": "In Progress", "progress": 60},
+        {"name": "Final Inspection", "status": "Not Started", "progress": 0}
+    ]
+    
+    milestone_progress = [milestone['progress'] for milestone in milestones]
+    milestone_names = [milestone['name'] for milestone in milestones]
+    
+    # Progress bar for milestones
+    for i, milestone in enumerate(milestones):
+        st.markdown(f"**{milestone['name']}** - {milestone['status']}")
+        st.progress(milestone['progress'])
+        st.markdown(f"Progress: {milestone['progress']}%")
+    
+    # Display Overall Project Progress as a Gauge
+    st.markdown("### Overall Project Progress")
+    overall_progress = project_data['progress']  # Can be dynamically calculated
+    st.progress(overall_progress)
 
-            # Display overall progress graph
-            st.subheader("Project Progress - Milestone Overview")
-            milestone_data = {
-                'Milestone': ['Planning', 'Design', 'Construction', 'Completion'],
-                'Progress': [20, 40, 60, progress]
-            }
-            progress_fig = px.bar(milestone_data, x='Milestone', y='Progress', title="Project Milestones")
-            st.plotly_chart(progress_fig)
+    st.markdown(f"**Overall Progress: {overall_progress}%**")
+    
+    # Visualize Task Progress with a Bar Chart
+    st.markdown("### Task Progress Breakdown")
+    task_names = [task["name"] for task in project_data["tasks"]]
+    task_progress = [task["progress"] for task in project_data["tasks"]]
+    
+    fig, ax = plt.subplots()
+    ax.barh(task_names, task_progress, color='skyblue')
+    ax.set_xlabel('Progress (%)')
+    ax.set_title('Task Progress Breakdown')
+    st.pyplot(fig)
+
+    # Task Tracking - Editable Progress Bar and Task Updates
+    st.markdown("### Task Details")
+    for i, task in enumerate(project_data["tasks"]):
+        with st.expander(f"📌 Task: {task['name']}"):
+            task_progress = st.slider(f"Progress for {task['name']}", 0, 100, task['progress'])
+            task["progress"] = task_progress  # Update progress in real-time
+            task["last_updated"] = pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')
+            
+            # Show additional details like task deadline, description, and upload functionality
+            task_description = st.text_area(f"Description for {task['name']}", task.get("description", ""), key=f"description_{i}")
+            task_deadline = st.date_input(f"Deadline for {task['name']}", pd.to_datetime(task.get("deadline", pd.Timestamp.today())).date(), key=f"deadline_{i}")
+            task["description"] = task_description
+            task["deadline"] = task_deadline.isoformat()
+
+            # Button to upload related documents
+            st.file_uploader(f"Upload files for {task['name']}", type=["jpg", "png", "pdf"], key=f"upload_{i}")
+
+            # Show last updated time
+            st.markdown(f"Last Updated: {task.get('last_updated', 'Not updated yet')}")
+
+    # Filter Tasks by Status (In Progress, Completed, Not Started)
+    task_status_filter = st.radio("Filter Tasks by Status", ["All", "Completed", "In Progress", "Not Started"])
+
+    filtered_tasks = []
+    if task_status_filter == "All":
+        filtered_tasks = project_data["tasks"]
+    elif task_status_filter == "Completed":
+        filtered_tasks = [task for task in project_data["tasks"] if task["progress"] == 100]
+    elif task_status_filter == "In Progress":
+        filtered_tasks = [task for task in project_data["tasks"] if 0 < task["progress"] < 100]
+    elif task_status_filter == "Not Started":
+        filtered_tasks = [task for task in project_data["tasks"] if task["progress"] == 0]
+
+    # Display filtered tasks
+    st.markdown(f"### Tasks with Status: {task_status_filter}")
+    for task in filtered_tasks:
+        st.markdown(f"- **{task['name']}**: {task['progress']}% Complete")
+    
+    # Task Progress Summary
+    st.markdown("### Task Progress Summary")
+    total_tasks = len(project_data["tasks"])
+    completed_tasks = len([task for task in project_data["tasks"] if task["progress"] == 100])
+    in_progress_tasks = len([task for task in project_data["tasks"] if 0 < task["progress"] < 100])
+    not_started_tasks = len([task for task in project_data["tasks"] if task["progress"] == 0])
+    
+    st.markdown(f"Total Tasks: {total_tasks}")
+    st.markdown(f"Completed Tasks: {completed_tasks}")
+    st.markdown(f"In Progress Tasks: {in_progress_tasks}")
+    st.markdown(f"Not Started Tasks: {not_started_tasks}")
 
     # Tab 3: Financials
     with tab3:
