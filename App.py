@@ -339,42 +339,39 @@ else:
                     st.info("No interim claims found for this project.")
 
             elif interim_claim_action == "Update Claim Status":
-                # Update Existing Claim Status
-                if project_data["interim_claims"]:
-                    claim_options = [f"Claim #{idx + 1}" for idx in range(len(project_data["interim_claims"]))]
-                    selected_claim = st.selectbox("Select a Claim to Update", claim_options)
+    # Update Existing Claim Status
+    if project_data["interim_claims"]:
+        claim_options = [f"Claim #{idx + 1}" for idx in range(len(project_data["interim_claims"]))]
+        selected_claim = st.selectbox("Select a Claim to Update", claim_options)
 
-                    # Get the selected claim's index
-                    claim_idx = claim_options.index(selected_claim)
-                    selected_claim_data = project_data["interim_claims"][claim_idx]
+        # Get the selected claim's index
+        claim_idx = claim_options.index(selected_claim)
+        selected_claim_data = project_data["interim_claims"][claim_idx]
 
-                    # Allow user to update the status of the selected claim
-                    new_status = st.selectbox("Update Claim Status", ["Pending", "Approved", "Rejected"],
-                                              index=["Pending", "Approved", "Rejected"].index(
-                                                  selected_claim_data["status"]))
+        # Allow user to update the status of the selected claim
+        new_status = st.selectbox("Update Claim Status", ["Pending", "Approved", "Rejected"],
+                                  index=["Pending", "Approved", "Rejected"].index(
+                                      selected_claim_data["status"]))
 
-                    if st.button(f"Update Status for {selected_claim}"):
-                        # Update the claim's status
-                        project_data["interim_claims"][claim_idx]["status"] = new_status
-                        save_projects()
-                        st.success(f"The status for {selected_claim} has been updated to {new_status}.")
-                else:
-                    st.info("No interim claims found for this project.")
+        if st.button(f"Update Status for {selected_claim}"):
+            # Update the claim's status
+            project_data["interim_claims"][claim_idx]["status"] = new_status
+            save_projects()
+            st.success(f"The status for {selected_claim} has been updated to {new_status}.")
+    else:
+        st.info("No interim claims found for this project.")
 
-            # Claim History or Audit Trail
-            if project_data["interim_claims"]:
-                st.subheader("Claim History / Audit Trail")
-                # Updated for handling missing 'notes'
-                audit_data = []
-                for claim in project_data["interim_claims"]:
-                    audit_data.append({
-                        "Claim Amount": claim["amount"],
-                        "Status": claim["status"],
-                        "Payment Schedule": claim["payment_schedule"],
-                        "Notes": claim.get("notes", "No notes provided")
-                        # Using get to avoid errors if 'notes' is missing
-                    })
+    # Claim History or Audit Trail
+    if project_data["interim_claims"]:
+        st.subheader("Claim History / Audit Trail")
+        audit_data = []
+        for claim in project_data["interim_claims"]:
+            audit_data.append({
+                "Claim Amount ($)": claim["amount"],
+                "Claim Status": claim["status"],
+                "Payment Schedule": claim["payment_schedule"],
+                "Notes": claim.get("notes", "No notes available")
+            })
+        audit_df = pd.DataFrame(audit_data)
+        st.dataframe(audit_df)
 
-                if audit_data:
-                    audit_df = pd.DataFrame(audit_data)
-                    st.write(audit_df)
