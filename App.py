@@ -19,6 +19,17 @@ if 'projects' not in st.session_state:
     st.session_state.projects = []
 if 'username' not in st.session_state:
     st.session_state.username = None
+    
+# Initialize session state variables
+if "projects" not in st.session_state:
+    st.session_state.projects = []
+
+if "progress_data" not in st.session_state:
+    st.session_state.progress_data = {}
+
+if "show_progress_tracking" not in st.session_state:
+    st.session_state.show_progress_tracking = False
+
 
 
 # Custom serializer for datetime objects
