@@ -100,65 +100,71 @@ else:
     tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["📂 Project Overview", "📊 Progress Tracking", "💰 Financials",
                                                   "✅ Task Management", "📄 Documents", "💼 Interim Claims"])
 
-    # Tab 1: Project Overview
-    with tab1:
-        st.header("📂 Project Overview")
-        st.markdown("View and manage all your projects here.")
-        project_action = st.radio("Choose an action", ["Register New Project", "View Existing Projects"])
+    # Tab 1: Central Dashboard for Project Overview
+with tab1:
+    st.header("📂 Central Dashboard - Project Overview")
+    st.markdown("Here you can see a quick summary of all your projects. Select any project to manage further.")
 
-        if project_action == "Register New Project":
-            with st.form(key="project_form"):
-                col1, col2 = st.columns(2)
-                with col1:
-                    project_name = st.text_input("Project Name")
-                    project_id = st.text_input("Project ID")
-                    client_name = st.text_input("Client Name")
-                with col2:
-                    start_date = st.date_input("Start Date")
-                    end_date = st.date_input("End Date", min_value=start_date)
-                    budget = st.number_input("Budget ($)", min_value=0, value=100000)
+    # Display a quick summary of all projects
+    if st.session_state.projects:
+        # Prepare a summary table with key project info
+        project_summary = []
+        for proj in st.session_state.projects:
+            progress = proj.get("progress", 0)
+            remaining_budget = proj["budget"] - sum([claim["amount"] for claim in proj["interim_claims"]])
+            project_summary.append({
+                "Project Name": proj["name"],
+                "Client": proj["client"],
+                "Progress": f"{progress}%",
+                "Remaining Budget ($)": f"${remaining_budget:,.2f}",
+                "Tasks Pending": len([task for task in proj["tasks"] if task["progress"] < 100]),
+                "Milestone": "Ongoing" if progress < 100 else "Completed"
+            })
 
-                submit = st.form_submit_button("Register Project")
-                if submit:
-                    if not project_name or not project_id or not client_name:
-                        st.error("All fields are required!")
-                    else:
-                        new_project = {
-                            "name": project_name,
-                            "id": project_id,
-                            "client": client_name,
-                            "start_date": start_date.isoformat(),
-                            "end_date": end_date.isoformat(),
-                            "budget": budget,
-                            "progress": 0,
-                            "tasks": [],
-                            "documents": [],
-                            "interim_claims": []  # Ensure interim_claims is initialized as an empty list
-                        }
+        # Display summary in a table
+        project_df = pd.DataFrame(project_summary)
+        st.dataframe(project_df)
 
-                        st.session_state.projects.append(new_project)
-                        save_projects()
-                        st.success(f"Project {project_name} registered successfully!")
+        # Provide a quick access section for each project
+        selected_project_name = st.selectbox("Select a Project to Manage", [proj["name"] for proj in st.session_state.projects])
+        selected_project = next(proj for proj in st.session_state.projects if proj["name"] == selected_project_name)
 
-        elif project_action == "View Existing Projects":
-            load_projects()
+        st.subheader(f"Details for {selected_project_name}")
+        st.write(f"**Client:** {selected_project['client']}")
+        st.write(f"**Start Date:** {selected_project['start_date']}")
+        st.write(f"**End Date:** {selected_project['end_date']}")
+        st.write(f"**Budget:** ${selected_project['budget']:,.2f}")
+        st.write(f"**Progress:** {selected_project['progress']}%")
+        st.write(f"**Remaining Budget:** ${remaining_budget:,.2f}")
+        st.write(f"**Tasks Pending:** {len([task for task in selected_project['tasks'] if task['progress'] < 100])}")
 
-            if st.session_state.projects:
-                project_names = [proj["name"] for proj in st.session_state.projects]
-                selected_project = st.selectbox("Select a Project to Track", project_names,
-                                                key="existing_project_select")
-                project_data = next(proj for proj in st.session_state.projects if proj["name"] == selected_project)
-                st.write("**Project Details:**")
-                st.json(project_data)
+        # Show Project Milestones or Tasks
+        st.subheader("Tasks and Milestones")
+        task_status = "Ongoing" if selected_project['progress'] < 100 else "Completed"
+        st.write(f"Current status: {task_status}")
 
-                # Option to delete project
-                if st.button("Delete Project", key=f"delete_{selected_project}"):
-                    st.session_state.projects = [proj for proj in st.session_state.projects if
-                                                 proj["name"] != selected_project]
-                    save_projects()
-                    st.success(f"Project {selected_project} deleted successfully!")
-            else:
-                st.info("No projects available. Please register a new project.")
+        task_data = selected_project["tasks"]
+        task_df = pd.DataFrame(task_data)
+        task_df = task_df[["name", "due", "progress"]]
+        st.write("**Tasks Overview:**")
+        st.dataframe(task_df)
+
+        # Quick Action Buttons
+        action_col1, action_col2 = st.columns(2)
+        with action_col1:
+            if st.button(f"View Details of {selected_project_name}", key=f"view_{selected_project_name}"):
+                st.session_state.selected_project = selected_project
+                st.experimental_rerun()
+
+        with action_col2:
+            if st.button(f"Delete {selected_project_name}", key=f"delete_{selected_project_name}"):
+                st.session_state.projects = [proj for proj in st.session_state.projects if proj["name"] != selected_project_name]
+                save_projects()
+                st.success(f"Project {selected_project_name} deleted successfully!")
+    
+    else:
+        st.info("No projects registered. Please register a new project to get started.")
+
 
     # Tab 2: Progress Tracking
     with tab2:
